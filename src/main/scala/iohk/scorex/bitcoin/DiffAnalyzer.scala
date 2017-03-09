@@ -4,28 +4,21 @@ import java.io.{BufferedWriter, File, FileWriter}
 import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.security.SecureRandom
-import java.util
 
 import org.apache.commons.math3.stat.inference.ChiSquareTest
-import org.bitcoinj.core.AbstractBlockChain.NewBlockType
 import org.bitcoinj.core._
-import org.bitcoinj.net.discovery.DnsDiscovery
-import org.bitcoinj.params.MainNetParams
-import org.bitcoinj.store.SPVBlockStore
 import org.mapdb.DBMaker
 
 import scala.collection.JavaConversions._
 import scala.util.Random
 
 
-object Analyzer extends App {
+object DiffAnalyzer extends App with MainnetAnalyzer {
 
-  val Folder = "/opt/scorex/BitcoinAnalyzer/"
-  new File(Folder).mkdirs()
+
   val RetargetTimestamp = 2016
 
-  val netParams = MainNetParams.get()
-  lazy val store = new SPVBlockStore(netParams, new java.io.File(Folder + "blochchain"))
+
   lazy val listener = new Listener {
 
     override def notifyNewBestBlock(block: StoredBlock): Unit = {
@@ -40,9 +33,7 @@ object Analyzer extends App {
         block.getHeader.getTimeSeconds)
     }
   }
-
-  lazy val ls: List[BlockChainListener] = List(listener)
-  lazy val chain = new BlockChain(netParams, ls, store)
+  chain.addListener(listener)
   lazy val MaxHeight = store.getChainHead.getHeight
 
 
@@ -58,15 +49,6 @@ object Analyzer extends App {
   db.commit()
   analyzeDiff()
   analyzeTimestamps()
-
-  def chainDownload(): Unit = {
-
-    val peerGroup = new PeerGroup(netParams, chain)
-    peerGroup.setUserAgent("SmartContract.com", "0.1")
-    peerGroup.addPeerDiscovery(new DnsDiscovery(netParams))
-    peerGroup.startAsync()
-    peerGroup.downloadBlockChain()
-  }
 
   def analyzeSeq(randoms: Seq[Long]) = {
     def secureRandoms(size: Int): Array[Long] = {
@@ -136,7 +118,7 @@ object Analyzer extends App {
   def analyzeDiff(): Unit = {
     def getDifficultyTargetAsInteger(difficultyTarget: Long): BigInteger = Utils.decodeCompactBits(difficultyTarget)
 
-    val heights = (1 to MaxHeight by RetargetTimestamp)
+    val heights = 1 to MaxHeight by RetargetTimestamp
     val file = new File("difficulties.txt")
     val bw = new BufferedWriter(new FileWriter(file))
     heights.foreach(i => bw.write(i.toString + " " + getDifficultyTargetAsInteger(difficulty.get(i)).toString + "\n"))
@@ -144,14 +126,14 @@ object Analyzer extends App {
   }
 
   def analyzeTimestamps(): Unit = {
-    val heights = (1 to (MaxHeight - RetargetTimestamp) by RetargetTimestamp)
+    val heights = 1 to (MaxHeight - RetargetTimestamp) by RetargetTimestamp
     var diffs: IndexedSeq[Long] = (0 until RetargetTimestamp).map(i => 0L)
     println(diffs)
     heights.foreach { h =>
       println(h)
       (0 until RetargetTimestamp).foreach { i =>
         val current = diffs(i)
-        val diff: Long = (timestamp.get(h + i + 1) - timestamp.get(h + i))
+        val diff: Long = timestamp.get(h + i + 1) - timestamp.get(h + i)
         if (diff < 0) println(s"WARN: ${h + i}=>$diff")
         diffs = diffs.updated(i, diff + current)
       }

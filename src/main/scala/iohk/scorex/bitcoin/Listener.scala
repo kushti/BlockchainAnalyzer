@@ -3,9 +3,8 @@ package iohk.scorex.bitcoin
 import java.util
 
 import org.bitcoinj.core.AbstractBlockChain.NewBlockType
-import org.bitcoinj.core.{Transaction, Sha256Hash, StoredBlock, BlockChainListener}
-
-import scala.util.Random
+import org.bitcoinj.core.listeners.BlockChainListener
+import org.bitcoinj.core.{Sha256Hash, StoredBlock, Transaction}
 
 abstract class Listener extends BlockChainListener {
   override def reorganize(splitPoint: StoredBlock,
@@ -26,11 +25,6 @@ abstract class Listener extends BlockChainListener {
                                 block: StoredBlock,
                                 blockType: NewBlockType,
                                 relativityOffset: Int): Unit = {
-
+    println(tx.getHash + " : " + tx.getInputs.size())
   }
-
-  override def isTransactionRelevant(tx: Transaction): Boolean = {
-    false
-  }
-
 }
