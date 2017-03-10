@@ -1,32 +1,43 @@
 package iohk.scorex.bitcoin
 
+
 import org.bitcoinj.core.{Block, StoredBlock}
 import org.bitcoinj.core.listeners.NewBestBlockListener
+
 import scala.collection.mutable
 
 object NipopowAnalyzer extends App with MainnetAnalyzer{
 
   val m = 5
 
-  val headers = mutable.Map[Int, Block]()
+  val headers = mutable.Map[BigInt, StoredBlock]()
 
   val bbl = new NewBestBlockListener{
     override def notifyNewBestBlock(block: StoredBlock): Unit = {
       val height = block.getHeight
       val header = block.getHeader
-      println(height + " : " + header.getHashAsString)
 
-      def mnOpt(k:Int):Option[Block]= {
+      def mnOpt(k:Int):Option[(Int, Block)]= {
         val m = (1 to k).foldLeft(2){case (mc, _) => mc * 2}
-        headers.values
-          .find(h => BigInt(h.getHash.toBigInteger) < BigInt(header.getHash.toBigInteger) / m)
+        val blocks = headers.filterKeys(_ < BigInt(header.getDifficultyTargetAsInteger) / m).values
+
+        blocks.isEmpty match {
+          case true => None
+          case false =>
+            val b = blocks.maxBy(_.getHeight)
+            Some(b.getHeight -> b.getHeader)
+        }
       }
 
-      (1 to 16).foreach(k=>
-        mnOpt(k).foreach(h => println(s"m$k : " + h.getHash))
+      println(height + " : " + header.getHashAsString)
+      println("target: " + header.getDifficultyTargetAsInteger)
+      (1 to 20).foreach(k=>
+        mnOpt(k).foreach{case (h, bh) =>
+          println(s"m$k : height = $h, hash = ${bh.getHash}")
+        }
       )
 
-      headers.put(height, block.getHeader)
+      headers.put(block.getHeader.getHash.toBigInteger, block)
     }
   }
 
