@@ -18,6 +18,10 @@ object DiffAnalyzer extends App with MainnetAnalyzer {
 
   val RetargetTimestamp = 2016
 
+  val db = DBMaker.fileDB(new File(Folder + "db"))
+    .closeOnJvmShutdown()
+    .checksumEnable()
+    .make()
 
   lazy val listener = new Listener {
 
@@ -35,12 +39,6 @@ object DiffAnalyzer extends App with MainnetAnalyzer {
   }
   chain.addListener(listener)
   lazy val MaxHeight = store.getChainHead.getHeight
-
-
-  val db = DBMaker.fileDB(new File(Folder + "db"))
-    .closeOnJvmShutdown()
-    .checksumEnable()
-    .make()
 
   val difficulty = db.treeMap[Int, Long]("Difficulty")
   val timestamp = db.treeMap[Int, Long]("timestamp")

@@ -21,7 +21,6 @@ trait MainnetAnalyzer {
   lazy val chain = new BlockChain(context, new Wallet(context), store)
 
   def chainDownload(): Unit = {
-
     val peerGroup = new PeerGroup(netParams, chain)
     peerGroup.setUserAgent("kushti's bot", "0.1")
     peerGroup.addPeerDiscovery(new DnsDiscovery(netParams))
